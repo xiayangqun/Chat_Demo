@@ -1,0 +1,102 @@
+syntax = "proto3";
+
+package chat.realtime.v1;
+
+enum RealtimeEventType {
+  REALTIME_EVENT_TYPE_UNSPECIFIED = 0;
+  MESSAGE_CREATED = 1;
+  CONVERSATION_CREATED = 2;
+  CONVERSATION_UPDATED = 3;
+  TYPING_UPDATED = 4;
+}
+
+enum ConversationType {
+  CONVERSATION_TYPE_UNSPECIFIED = 0;
+  GROUP = 1;
+  DIRECT = 2;
+}
+
+enum MessageType {
+  MESSAGE_TYPE_UNSPECIFIED = 0;
+  TEXT = 1;
+}
+
+message User {
+  string id = 1;
+  string username = 2;
+  string name = 3;
+  optional string avatar_url = 4;
+  optional string title = 5;
+}
+
+message MessagePreview {
+  string id = 1;
+  string conversation_id = 2;
+  User sender = 3;
+  string body = 4;
+  MessageType type = 5;
+  string created_at = 6;
+}
+
+message MessageQuote {
+  string id = 1;
+  User sender = 2;
+  string body = 3;
+  MessageType type = 4;
+  string created_at = 5;
+}
+
+message Message {
+  string id = 1;
+  string conversation_id = 2;
+  User sender = 3;
+  MessageType type = 4;
+  string body = 5;
+  optional MessageQuote quote_message = 6;
+  repeated User mentions = 7;
+  string created_at = 8;
+  string updated_at = 9;
+}
+
+message Conversation {
+  string id = 1;
+  string name = 2;
+  ConversationType type = 3;
+  repeated string avatar_urls = 4;
+  int32 member_count = 5;
+  int32 unread_count = 6;
+  optional MessagePreview last_message = 7;
+  string created_at = 8;
+  string updated_at = 9;
+}
+
+message MessageCreatedPayload {
+  Message message = 1;
+}
+
+message ConversationCreatedPayload {
+  Conversation conversation = 1;
+}
+
+message ConversationUpdatedPayload {
+  Conversation conversation = 1;
+}
+
+message TypingUpdatedPayload {
+  string conversation_id = 1;
+  User user = 2;
+  bool is_typing = 3;
+}
+
+message RealtimeEvent {
+  string event_id = 1;
+  RealtimeEventType type = 2;
+  string emitted_at = 3;
+
+  oneof payload {
+    MessageCreatedPayload message_created = 10;
+    ConversationCreatedPayload conversation_created = 11;
+    ConversationUpdatedPayload conversation_updated = 12;
+    TypingUpdatedPayload typing_updated = 13;
+  }
+}
