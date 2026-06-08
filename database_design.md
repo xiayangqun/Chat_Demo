@@ -115,6 +115,7 @@ db.conversations.createIndex({ createdByUserId: 1, createdAt: -1 });
 | `userId` | ObjectId | 是 | 用户 ID |
 | `role` | string | 是 | `OWNER` 或 `MEMBER` |
 | `unreadCount` | number | 是 | 当前用户在该会话的未读数 |
+| `mentionCount` | number | 是 | 当前用户在该会话被 @ 的未读数 |
 | `lastReadAt` | Date/null | 否 | 最近已读时间 |
 | `createdAt` | Date | 是 | 加入时间 |
 | `updatedAt` | Date | 是 | 更新时间 |

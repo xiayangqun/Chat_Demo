@@ -65,10 +65,9 @@ message Conversation {
   repeated string avatar_urls = 4;
   int32 member_count = 5;
   int32 unread_count = 6;
-  int32 mention_count = 7;
-  optional MessagePreview last_message = 8;
-  string created_at = 9;
-  string updated_at = 10;
+  optional MessagePreview last_message = 7;
+  string created_at = 8;
+  string updated_at = 9;
 }
 
 message MessageCreatedPayload {

@@ -1,1 +1,6 @@
 .workbuddy
+.omo
+.codegraph
+server/dist
+server/node_modules
+proto/generated

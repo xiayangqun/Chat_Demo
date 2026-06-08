@@ -1,0 +1,26 @@
+@import "tailwindcss";
+
+@theme {
+  --color-app-bg: #0C0E13;
+  --color-panel: #1D1C21;
+  --color-chat-bg: #26252D;
+  --color-active-row: #26252D;
+  --color-border: #454350;
+  --color-text-primary: #FFFFFF;
+  --color-text-secondary: #C9C7D0;
+  --color-text-muted: #7B798F;
+  --color-text-dim: #929699;
+  --color-accent: #04B17D;
+  --color-accent-hover: #03A070;
+  --color-my-bubble: #7DEBF5;
+  --color-other-bubble: #454350;
+  --color-unread: #FD3338;
+  --color-input-bg: #26252D;
+  --color-dropdown: #35333D;
+  --color-user-status-online: #04B17D;
+  --color-user-status-away: #FFA726;
+  --color-user-status-dnd: #FD3338;
+  --font-body: "Inter", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  --font-code: "SF Mono", "Fira Code", "Fira Mono", Menlo, monospace;
+  --radius-xl: 16px;
+}

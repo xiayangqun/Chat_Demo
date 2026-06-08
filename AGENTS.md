@@ -49,6 +49,14 @@ MONGODB_URI="mongodb://localhost:27017/chat-demo" ./scripts/init-database.sh
 - `api_definition.md` 中的 Socket.IO 事件说明
 - 前端和后端设计文档中的实时消息处理说明
 
+修改 `proto/chat_realtime.proto` 后，必须运行 `npm run generate-proto`（在 server/ 或 client/ 目录下）重新生成静态编解码模块。不要手动编辑以下自动生成的文件：
+
+- `proto/generated/chat_realtime.{js,d.ts}`
+- `server/src/generated/chat_realtime_pb.{js,d.ts}`
+- `client/src/generated/chat_realtime_pb.{js,d.ts}`
+
+`server/src/generated/chat_realtime.ts` 和 `client/src/generated/chat_realtime.ts` 是手动维护的封装层，如果新增消息类型或枚举值，也需要同步更新。
+
 GraphQL 仍然使用标准 JSON/GraphQL 请求响应；Protobuf 只用于 Socket.IO 实时事件的二进制 payload。
 
 ## 关键规则：Redis 设计必须同步

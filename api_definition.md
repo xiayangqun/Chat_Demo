@@ -109,7 +109,9 @@ type Conversation {
   type: ConversationType!
   avatarUrls: [String!]!
   memberCount: Int!
+  members: [User!]!
   unreadCount: Int!
+  mentionCount: Int!
   lastMessage: MessagePreview
   createdAt: DateTime!
   updatedAt: DateTime!
@@ -119,6 +121,7 @@ type Conversation {
 说明：
 
 - `unreadCount` 是当前请求用户视角的未读数。
+- `mentionCount` 是当前请求用户被 @ 的未读数（标记已读后归零）。
 - `avatarUrls` 可以为空数组，前端使用默认头像。
 
 ### 5.4 ConversationMember
@@ -130,6 +133,7 @@ type ConversationMember {
   user: User!
   role: ConversationRole!
   unreadCount: Int!
+  mentionCount: Int!
   lastReadAt: DateTime
   createdAt: DateTime!
   updatedAt: DateTime!

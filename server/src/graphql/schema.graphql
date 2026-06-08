@@ -1,0 +1,153 @@
+scalar DateTime
+
+enum ConversationType {
+  GROUP
+  DIRECT
+}
+
+enum ConversationRole {
+  OWNER
+  MEMBER
+}
+
+enum MessageType {
+  TEXT
+}
+
+type User {
+  id: ID!
+  username: String!
+  name: String!
+  avatarUrl: String
+  title: String
+  createdAt: DateTime!
+  updatedAt: DateTime!
+}
+
+type AuthPayload {
+  token: String!
+  user: User!
+}
+
+type Conversation {
+  id: ID!
+  name: String!
+  type: ConversationType!
+  avatarUrls: [String!]!
+  memberCount: Int!
+  members: [User!]!
+  unreadCount: Int!
+  mentionCount: Int!
+  lastMessage: MessagePreview
+  createdAt: DateTime!
+  updatedAt: DateTime!
+}
+
+type ConversationMember {
+  id: ID!
+  conversationId: ID!
+  user: User!
+  role: ConversationRole!
+  unreadCount: Int!
+  mentionCount: Int!
+  lastReadAt: DateTime
+  createdAt: DateTime!
+  updatedAt: DateTime!
+}
+
+type MessagePreview {
+  id: ID!
+  conversationId: ID!
+  sender: User!
+  body: String!
+  type: MessageType!
+  createdAt: DateTime!
+}
+
+type MessageQuote {
+  id: ID!
+  sender: User!
+  body: String!
+  type: MessageType!
+  createdAt: DateTime!
+}
+
+type Message {
+  id: ID!
+  conversationId: ID!
+  sender: User!
+  type: MessageType!
+  body: String!
+  quoteMessage: MessageQuote
+  mentions: [User!]!
+  createdAt: DateTime!
+  updatedAt: DateTime!
+}
+
+type PageInfo {
+  hasNextPage: Boolean!
+  endCursor: String
+}
+
+type MessageEdge {
+  cursor: String!
+  node: Message!
+}
+
+type MessageConnection {
+  edges: [MessageEdge!]!
+  nodes: [Message!]!
+  pageInfo: PageInfo!
+}
+
+type SendMessagePayload {
+  message: Message!
+  conversation: Conversation!
+  clientMutationId: String
+}
+
+input RegisterInput {
+  username: String!
+  displayName: String!
+  password: String!
+}
+
+input LoginInput {
+  username: String!
+  password: String!
+}
+
+input CreateGroupConversationInput {
+  name: String!
+  memberUserIds: [ID!]!
+}
+
+input CreateDirectConversationInput {
+  userId: ID!
+}
+
+input SendMessageInput {
+  conversationId: ID!
+  body: String!
+  quoteMessageId: ID
+  mentionUserIds: [ID!] = []
+  clientMutationId: String
+}
+
+type Query {
+  me: User!
+  users(query: String = "", limit: Int = 50, skip: Int = 0): [User!]!
+  conversations: [Conversation!]!
+  conversation(id: ID!): Conversation!
+  messages(conversationId: ID!, first: Int = 30, after: String): MessageConnection!
+  conversationMembers(conversationId: ID!, query: String = "", limit: Int = 10): [User!]!
+}
+
+type Mutation {
+  register(input: RegisterInput!): AuthPayload!
+  login(input: LoginInput!): AuthPayload!
+  createGroupConversation(input: CreateGroupConversationInput!): Conversation!
+  createDirectConversation(input: CreateDirectConversationInput!): Conversation!
+  sendMessage(input: SendMessageInput!): SendMessagePayload!
+  markConversationRead(conversationId: ID!): Conversation!
+}

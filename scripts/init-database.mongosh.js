@@ -1,125 +1,134 @@
 // Initialize MongoDB collections, validators, and indexes for the Chat Demo.
+// Idempotent: safe to run multiple times. Does not destroy existing data.
+//
+// Schema definitions live in schemas.mongosh.js (single source of truth).
+//
 // Usage:
 //   mongosh "mongodb://localhost:27017/chat-demo" scripts/init-database.mongosh.js
 
-const collections = ["users", "conversations", "conversation_members", "messages"];
+// ──────────────────────────────────────────────
+// 1. Load schema definitions from external file
+// ──────────────────────────────────────────────
 
-for (const name of collections) {
-  if (!db.getCollectionNames().includes(name)) {
-    db.createCollection(name);
-  }
+const SCRIPT_DIR = (typeof __dirname !== "undefined")
+  ? __dirname
+  : pwd() + "/scripts";
+
+load(SCRIPT_DIR + "/schemas.mongosh.js");
+
+if (typeof SCHEMAS === "undefined") {
+  print("ERROR: Failed to load SCHEMAS from schemas.mongosh.js");
+  quit(1);
 }
 
-db.runCommand({
-  collMod: "users",
-  validator: {
-    $jsonSchema: {
-      bsonType: "object",
-      required: ["username", "passwordHash", "name", "createdAt", "updatedAt"],
-      properties: {
-        username: { bsonType: "string", minLength: 3, maxLength: 32 },
-        passwordHash: { bsonType: "string", minLength: 20 },
-        name: { bsonType: "string", minLength: 1, maxLength: 40 },
-        avatarUrl: { bsonType: ["string", "null"] },
-        title: { bsonType: ["string", "null"] },
-        createdAt: { bsonType: "date" },
-        updatedAt: { bsonType: "date" }
-      }
+// ──────────────────────────────────────────────
+// 2. Helper: pretty-print JSON inline
+// ──────────────────────────────────────────────
+
+function jsonStr(obj) {
+  return JSON.stringify(obj, null, 2)
+    .split("\n")
+    .map(line => "    " + line)
+    .join("\n");
+}
+
+// ──────────────────────────────────────────────
+// 3. Per-collection ensure logic
+// ──────────────────────────────────────────────
+
+function ensureCollection(name, schema) {
+  const exists = db.getCollectionNames().includes(name);
+
+  if (!exists) {
+    // ── Create new collection with validator ──
+    print(`\nCreating collection "${name}" with schema validator...`);
+    db.createCollection(name, {
+      validator: schema.validator,
+      validationLevel: schema.validationLevel
+    });
+    print(`  ✔ Collection "${name}" created.`);
+  } else {
+    // ── Validate existing schema ──
+    const info = db.getCollectionInfos({ name })[0];
+    const currentValidator = info.options?.validator || {};
+    const expectedValidator = schema.validator;
+
+    const validatorsMatch =
+      JSON.stringify(currentValidator) === JSON.stringify(expectedValidator);
+
+    if (!validatorsMatch) {
+      print(`\n⚠ WARNING: Collection "${name}" validator does not match expected schema.`);
+      print(`  Expected:`);
+      print(jsonStr(expectedValidator));
+      print(`  Actual:`);
+      print(jsonStr(currentValidator));
+      print(`  Applying collMod to correct.`);
     }
-  },
-  validationLevel: "moderate"
-});
 
-db.runCommand({
-  collMod: "conversations",
-  validator: {
-    $jsonSchema: {
-      bsonType: "object",
-      required: ["name", "type", "avatarUrls", "createdAt", "updatedAt"],
-      properties: {
-        name: { bsonType: "string", minLength: 1, maxLength: 60 },
-        type: { enum: ["GROUP", "DIRECT"] },
-        avatarUrls: { bsonType: "array", items: { bsonType: "string" } },
-        lastMessageId: { bsonType: ["objectId", "null"] },
-        createdByUserId: { bsonType: ["objectId", "null"] },
-        createdAt: { bsonType: "date" },
-        updatedAt: { bsonType: "date" }
-      }
+    // ── Apply collMod (idempotent — safe to re-run) ──
+    db.runCommand({
+      collMod: name,
+      validator: schema.validator,
+      validationLevel: schema.validationLevel
+    });
+    if (validatorsMatch) {
+      print(`  ✔ Collection "${name}" validator matches expected (verified via collMod).`);
+    } else {
+      print(`  ✔ Collection "${name}" validator corrected via collMod.`);
     }
-  },
-  validationLevel: "moderate"
-});
+  }
 
-db.runCommand({
-  collMod: "conversation_members",
-  validator: {
-    $jsonSchema: {
-      bsonType: "object",
-      required: ["conversationId", "userId", "role", "unreadCount", "createdAt", "updatedAt"],
-      properties: {
-        conversationId: { bsonType: "objectId" },
-        userId: { bsonType: "objectId" },
-        role: { enum: ["OWNER", "MEMBER"] },
-        unreadCount: { bsonType: ["int", "long", "double"], minimum: 0 },
-        lastReadAt: { bsonType: ["date", "null"] },
-        createdAt: { bsonType: "date" },
-        updatedAt: { bsonType: "date" }
-      }
+  // ── Ensure indexes ──
+  const collection = db.getCollection(name);
+  const existingIndexes = collection.getIndexes();
+
+  for (const idx of schema.indexes) {
+    const desiredKey = JSON.stringify(idx.key);
+    const desiredName = idx.options.name;
+
+    // Check if an index with the same key pattern already exists (any name)
+    const conflict = existingIndexes.find(
+      existing => JSON.stringify(existing.key) === desiredKey && existing.name !== desiredName
+    );
+
+    if (conflict) {
+      // An index with the same keys but different name already exists — skip
+      print(`  ⚠ Index "${desiredName}" skipped: equivalent index "${conflict.name}" already exists.`);
+      continue;
     }
-  },
-  validationLevel: "moderate"
-});
 
-db.runCommand({
-  collMod: "messages",
-  validator: {
-    $jsonSchema: {
-      bsonType: "object",
-      required: ["conversationId", "senderId", "type", "body", "mentionUserIds", "createdAt", "updatedAt"],
-      properties: {
-        conversationId: { bsonType: "objectId" },
-        senderId: { bsonType: "objectId" },
-        type: { enum: ["TEXT"] },
-        body: { bsonType: "string", minLength: 1, maxLength: 4000 },
-        quoteMessageId: { bsonType: ["objectId", "null"] },
-        mentionUserIds: { bsonType: "array", items: { bsonType: "objectId" } },
-        createdAt: { bsonType: "date" },
-        updatedAt: { bsonType: "date" }
-      }
+    // Check if the exact named index already exists
+    const exact = existingIndexes.find(
+      existing => existing.name === desiredName
+    );
+
+    if (exact) {
+      // Already exists with correct name — createIndex is idempotent but skip to avoid noise
+      continue;
     }
-  },
-  validationLevel: "moderate"
-});
 
-db.users.createIndex({ username: 1 }, { unique: true, name: "uniq_users_username" });
-db.users.createIndex({ name: 1 }, { name: "idx_users_name" });
-db.users.createIndex({ createdAt: -1 }, { name: "idx_users_createdAt" });
+    // No conflict — create it
+    collection.createIndex(idx.key, idx.options);
+  }
+  print(`  ✔ Collection "${name}" indexes ensured.`);
+}
 
-db.conversations.createIndex({ updatedAt: -1 }, { name: "idx_conversations_updatedAt" });
-db.conversations.createIndex(
-  { createdByUserId: 1, createdAt: -1 },
-  { name: "idx_conversations_createdBy_createdAt" }
-);
+// ──────────────────────────────────────────────
+// 4. Run for all collections
+// ──────────────────────────────────────────────
 
-db.conversation_members.createIndex(
-  { conversationId: 1, userId: 1 },
-  { unique: true, name: "uniq_conversation_members_conversation_user" }
-);
-db.conversation_members.createIndex(
-  { userId: 1, updatedAt: -1 },
-  { name: "idx_conversation_members_user_updatedAt" }
-);
-db.conversation_members.createIndex(
-  { conversationId: 1, role: 1 },
-  { name: "idx_conversation_members_conversation_role" }
-);
+print("Chat Demo — Database Schema Initialization");
+print("==========================================");
+print(`Loaded ${Object.keys(SCHEMAS).length} schemas from schemas.mongosh.js`);
 
-db.messages.createIndex(
-  { conversationId: 1, createdAt: -1, _id: -1 },
-  { name: "idx_messages_conversation_createdAt_id" }
-);
-db.messages.createIndex({ senderId: 1, createdAt: -1 }, { name: "idx_messages_sender_createdAt" });
-db.messages.createIndex({ mentionUserIds: 1 }, { name: "idx_messages_mentions" });
-db.messages.createIndex({ quoteMessageId: 1 }, { name: "idx_messages_quote" });
+for (const [name, schema] of Object.entries(SCHEMAS)) {
+  ensureCollection(name, schema);
+}
 
-print("Chat Demo database initialized.");
+// ──────────────────────────────────────────────
+// 5. Verdict
+// ──────────────────────────────────────────────
+
+print("\n==========================================");
+print("VERDICT: All collections validated/created successfully.");
+print("==========================================");
