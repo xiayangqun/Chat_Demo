@@ -29,8 +29,8 @@ export const GET_CONVERSATIONS = gql`
 `;
 
 export const GET_MESSAGES = gql`
-  query GetMessages($conversationId: ID!, $first: Int, $after: String) {
-    messages(conversationId: $conversationId, first: $first, after: $after) {
+  query GetMessages($conversationId: ID!, $first: Int, $after: String, $last: Int, $before: String) {
+    messages(conversationId: $conversationId, first: $first, after: $after, last: $last, before: $before) {
       nodes {
         id
         conversationId
@@ -61,7 +61,9 @@ export const GET_MESSAGES = gql`
       }
       pageInfo {
         hasNextPage
+        hasPreviousPage
         endCursor
+        startCursor
       }
     }
   }

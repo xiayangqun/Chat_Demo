@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { useQuery, useMutation, useApolloClient, gql } from '@apollo/client';
 import { ChatHeader } from './ChatHeader';
 import { MessageList, type Message } from './MessageList';
@@ -48,7 +48,9 @@ interface MessagesData {
     nodes: Message[];
     pageInfo: {
       hasNextPage: boolean;
+      hasPreviousPage: boolean;
       endCursor: string | null;
+      startCursor: string | null;
     };
   };
 }
@@ -82,12 +84,21 @@ interface QuotedMessage {
   body: string;
 }
 
+// ---------------------------------------------------------------------------
+// Props
+// ---------------------------------------------------------------------------
+
 interface ChatPanelProps {
   conversationId: string;
   conversationName: string;
   memberCount?: number;
   members: MentionUser[];
+  initialUnreadCount: number;
 }
+
+// ---------------------------------------------------------------------------
+// Cache helpers
+// ---------------------------------------------------------------------------
 
 function addMessageToCache(
   client: ReturnType<typeof useApolloClient>,
@@ -132,17 +143,6 @@ function removeMessageFromCache(
 }
 
 // ---------------------------------------------------------------------------
-// Props
-// ---------------------------------------------------------------------------
-
-interface ChatPanelProps {
-  conversationId: string;
-  conversationName: string;
-  memberCount?: number;
-  members: MentionUser[];
-}
-
-// ---------------------------------------------------------------------------
 // Component
 // ---------------------------------------------------------------------------
 
@@ -151,6 +151,7 @@ export function ChatPanel({
   conversationName,
   memberCount,
   members,
+  initialUnreadCount,
 }: ChatPanelProps) {
   const { user } = useAuth();
   const currentUserId = user?.id ?? '';
@@ -159,17 +160,83 @@ export function ChatPanel({
   const [quotedMessage, setQuotedMessage] = useState<QuotedMessage | null>(
     null,
   );
+  const [hasMoreMessages, setHasMoreMessages] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
 
   const { data: messagesData } = useQuery<MessagesData>(GET_MESSAGES, {
-    variables: { conversationId, first: 50 },
+    variables: { conversationId, last: 50 },
     skip: !conversationId,
   });
+
+  useEffect(() => {
+    setHasMoreMessages(messagesData?.messages.pageInfo.hasPreviousPage ?? true);
+    setLoadingMore(false);
+  }, [conversationId, messagesData?.messages.pageInfo.hasPreviousPage]);
 
   const messages = messagesData?.messages.nodes ?? [];
 
   const [sendMessage] = useMutation<SendMessageData, SendMessageVars>(
     SEND_MESSAGE_MUTATION,
   );
+
+  const handleLoadMore = useCallback(async () => {
+    if (!hasMoreMessages || loadingMore || messages.length === 0) return;
+
+    setLoadingMore(true);
+    try {
+      const oldestId = messages[0].id;
+      const { data } = await client.query<MessagesData>({
+        query: GET_MESSAGES,
+        variables: { conversationId, first: 50, before: oldestId },
+        fetchPolicy: 'network-only',
+      });
+
+      const olderNodes = data.messages.nodes;
+      if (!data.messages.pageInfo.hasPreviousPage) {
+        setHasMoreMessages(false);
+      }
+
+      if (olderNodes.length > 0) {
+        const cache = client.cache;
+        // Prepend older messages to the cached list for the main query
+        cache.modify({
+          id: 'ROOT_QUERY',
+          fields: {
+            messages(existing) {
+              if (!existing?.nodes) return existing;
+              const existingIds = new Set(
+                existing.nodes.map((ref: { __ref: string }) => ref.__ref),
+              );
+              const newRefs = olderNodes
+                .map((msg) => {
+                  const cid = cache.identify({ __typename: 'Message', id: msg.id });
+                  if (cid) {
+                    cache.writeFragment({
+                      id: cid,
+                      fragment: MESSAGE_FRAGMENT,
+                      data: msg,
+                    });
+                    return { __ref: cid };
+                  }
+                  return null;
+                })
+                .filter(
+                  (ref): ref is { __ref: string } =>
+                    ref !== null && !existingIds.has(ref.__ref),
+                );
+
+              if (newRefs.length === 0) return existing;
+              return { ...existing, nodes: [...newRefs, ...existing.nodes] };
+            },
+          },
+        });
+      }
+    } catch (err) {
+      console.warn('[ChatPanel] Failed to load older messages:', err);
+    } finally {
+      setLoadingMore(false);
+    }
+  }, [client, conversationId, hasMoreMessages, loadingMore, messages]);
 
   const handleClearQuote = useCallback(() => {
     setQuotedMessage(null);
@@ -256,7 +323,14 @@ export function ChatPanel({
       />
 
       {/* Messages */}
-      <MessageList messages={messages} currentUserId={currentUserId} />
+      <MessageList
+        messages={messages}
+        currentUserId={currentUserId}
+        initialUnreadCount={initialUnreadCount}
+        hasMore={hasMoreMessages}
+        loadingMore={loadingMore}
+        onLoadMore={handleLoadMore}
+      />
 
       {/* Composer */}
       <MessageComposer

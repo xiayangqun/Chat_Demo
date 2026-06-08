@@ -1,4 +1,4 @@
-import { useMemo } from 'react';
+import { useMemo, memo } from 'react';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -146,7 +146,7 @@ function Avatar({ sender }: { sender: MessageSender }) {
 // MessageItem
 // ---------------------------------------------------------------------------
 
-export function MessageItem({ message, currentUserId }: MessageItemProps) {
+function MessageItemInner({ message, currentUserId }: MessageItemProps) {
   const isMine = message.sender.id === currentUserId;
   const isMentioned = message.mentions.some((m) => m.id === currentUserId);
 
@@ -196,3 +196,5 @@ export function MessageItem({ message, currentUserId }: MessageItemProps) {
     </div>
   );
 }
+
+export const MessageItem = memo(MessageItemInner);

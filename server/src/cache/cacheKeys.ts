@@ -63,9 +63,13 @@ export const cacheKeys = {
     conversationId: string,
     first: number,
     after: string | undefined,
+    before?: string | undefined,
+    last?: number | undefined,
   ): string {
     const cursor = after || "_start";
-    return `${P}:messages:${conversationId}:first:${first}:after:${cursor}`;
+    const bCursor = before || "_none";
+    const lVal = last ?? "_none";
+    return `${P}:messages:${conversationId}:first:${first}:after:${cursor}:before:${bCursor}:last:${lVal}`;
   },
 
   // ── Glob patterns for bulk invalidation ──────────────────────────────

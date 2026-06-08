@@ -101,7 +101,7 @@ export const resolvers = {
 
     messages: async (
       _parent: unknown,
-      args: { conversationId: string; first?: number; after?: string },
+      args: { conversationId: string; first?: number; after?: string; last?: number; before?: string },
       ctx: GraphQLContext,
     ) => {
       const userId = requireAuth(ctx);
@@ -110,6 +110,8 @@ export const resolvers = {
         userId,
         args.first,
         args.after,
+        args.last,
+        args.before,
       );
     },
 

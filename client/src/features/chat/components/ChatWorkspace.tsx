@@ -16,6 +16,7 @@ export function ChatWorkspace() {
     selectConversation,
     selectedConversation,
     setConversations,
+    initialUnreadCount,
   } = useConversationSelection();
 
   const { data: usersData } = useQuery<UsersData>(GET_USERS, {
@@ -46,6 +47,7 @@ export function ChatWorkspace() {
             conversationId={selectedConversationId}
             conversationName={selectedConversation.name}
             members={members}
+            initialUnreadCount={initialUnreadCount}
           />
         ) : (
           <div className="flex flex-1 items-center justify-center bg-chat-bg">

@@ -10,11 +10,13 @@ export interface UseConversationSelectionReturn {
   selectedConversation: Conversation | undefined;
   conversations: Conversation[];
   setConversations: (conversations: Conversation[]) => void;
+  initialUnreadCount: number;
 }
 
 export function useConversationSelection(): UseConversationSelectionReturn {
   const [selectedConversationId, setSelectedConversationId] = useState<string | null>(null);
   const [conversations, setConversations] = useState<Conversation[]>([]);
+  const [initialUnreadCount, setInitialUnreadCount] = useState(0);
   const client = useApolloClient();
 
   useEffect(() => {
@@ -27,12 +29,14 @@ export function useConversationSelection(): UseConversationSelectionReturn {
     setSelectedConversationId(id);
     setCurrentConversationId(id);
 
-    // Optimistically clear unread count in local state
-    setConversations((prev) =>
-      prev.map((c) =>
+    // Capture unreadCount before clearing it
+    setConversations((prev) => {
+      const conv = prev.find((c) => c.id === id);
+      setInitialUnreadCount(conv?.unreadCount ?? 0);
+      return prev.map((c) =>
         c.id === id ? { ...c, unreadCount: 0, mentionCount: 0 } : c,
-      ),
-    );
+      );
+    });
 
     // Fire markConversationRead mutation (optimistic response handled by Apollo)
     client.mutate({
@@ -63,7 +67,8 @@ export function useConversationSelection(): UseConversationSelectionReturn {
       selectedConversation,
       conversations,
       setConversations,
+      initialUnreadCount,
     }),
-    [selectedConversationId, selectConversation, selectedConversation, conversations, setConversations],
+    [selectedConversationId, selectConversation, selectedConversation, conversations, setConversations, initialUnreadCount],
   );
 }

@@ -86,7 +86,9 @@ type Message {
 
 type PageInfo {
   hasNextPage: Boolean!
+  hasPreviousPage: Boolean!
   endCursor: String
+  startCursor: String
 }
 
 type MessageEdge {
@@ -139,7 +141,7 @@ type Query {
   users(query: String = "", limit: Int = 50, skip: Int = 0): [User!]!
   conversations: [Conversation!]!
   conversation(id: ID!): Conversation!
-  messages(conversationId: ID!, first: Int = 30, after: String): MessageConnection!
+  messages(conversationId: ID!, first: Int, after: String, last: Int, before: String): MessageConnection!
   conversationMembers(conversationId: ID!, query: String = "", limit: Int = 10): [User!]!
 }
 

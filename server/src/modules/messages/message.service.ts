@@ -56,6 +56,8 @@ export class MessageService {
     userId: string,
     first?: number,
     after?: string,
+    last?: number,
+    before?: string,
   ): Promise<MessageConnection> {
     // Verify membership
     const membership = await ConversationMemberModel.findOne({
@@ -69,21 +71,58 @@ export class MessageService {
       });
     }
 
-    const limit = Math.min(first ?? 30, 50);
-    const key = cacheKeys.messages(conversationId, limit, after);
+    const key = cacheKeys.messages(conversationId, first ?? 0, after, before, last);
 
     return CacheService.remember(key, 30, async () => {
-      // Build query filter
       const filter: Record<string, unknown> = {
         conversationId: new mongoose.Types.ObjectId(conversationId),
       };
 
-      // Cursor pagination: _id > after
+      if (last != null) {
+        // Backward pagination: fetch the `last` most recent messages
+        const limit = Math.min(last, 50);
+
+        if (before) {
+          filter._id = { $lt: new mongoose.Types.ObjectId(before) };
+        }
+
+        const messages = await MessageModel.find(filter)
+          .sort({ createdAt: -1, _id: -1 })
+          .limit(limit + 1)
+          .lean();
+
+        const hasPreviousPage = messages.length > limit;
+        const slicedMessages = hasPreviousPage ? messages.slice(0, limit) : messages;
+        slicedMessages.reverse();
+
+        const hydratedMessages = await MessageService.hydrateMessages(
+          slicedMessages as unknown as IMessageDocument[],
+        );
+
+        const edges: MessageEdge[] = hydratedMessages.map((msg) => ({
+          cursor: msg.id,
+          node: msg,
+        }));
+
+        return {
+          edges,
+          nodes: hydratedMessages,
+          pageInfo: {
+            hasNextPage: false,
+            hasPreviousPage,
+            endCursor: edges.length > 0 ? edges[edges.length - 1].cursor : null,
+            startCursor: edges.length > 0 ? edges[0].cursor : null,
+          },
+        };
+      }
+
+      // Forward pagination: fetch the `first` oldest messages (or after cursor)
+      const limit = Math.min(first ?? 30, 50);
+
       if (after) {
         filter._id = { $gt: new mongoose.Types.ObjectId(after) };
       }
 
-      // Fetch one extra to determine hasNextPage
       const messages = await MessageModel.find(filter)
         .sort({ createdAt: 1, _id: 1 })
         .limit(limit + 1)
@@ -92,7 +131,6 @@ export class MessageService {
       const hasNextPage = messages.length > limit;
       const slicedMessages = hasNextPage ? messages.slice(0, limit) : messages;
 
-      // Hydrate all messages
       const hydratedMessages = await MessageService.hydrateMessages(
         slicedMessages as unknown as IMessageDocument[],
       );
@@ -107,7 +145,9 @@ export class MessageService {
         nodes: hydratedMessages,
         pageInfo: {
           hasNextPage,
+          hasPreviousPage: false,
           endCursor: edges.length > 0 ? edges[edges.length - 1].cursor : null,
+          startCursor: edges.length > 0 ? edges[0].cursor : null,
         },
       };
     });
