@@ -156,13 +156,21 @@ function MessageItemInner({ message, currentUserId }: MessageItemProps) {
     return (
       <div className="flex w-full justify-end px-4 py-1.5">
         <div className="flex max-w-[75%] flex-col items-end gap-1">
-          {message.quoteMessage && <QuoteBlock quote={message.quoteMessage} />}
-          <div className="rounded-2xl rounded-br-md bg-my-bubble px-3.5 py-2">
-            <p className="break-words text-sm text-app-bg">
-              {renderBody(message.body, message.mentions)}
-            </p>
+          <div className="flex items-baseline gap-2">
+            <span className="text-[11px] text-text-dim">{timeLabel}</span>
+            <span className="text-xs font-semibold text-text-secondary">
+              {message.sender.name}
+            </span>
           </div>
-          <span className="px-1 text-[11px] text-text-dim">{timeLabel}</span>
+          {message.quoteMessage && <QuoteBlock quote={message.quoteMessage} />}
+          <div className="flex items-end gap-2.5">
+            <div className="rounded-2xl rounded-br-md bg-my-bubble px-3.5 py-2">
+              <p className="break-words text-sm text-app-bg">
+                {renderBody(message.body, message.mentions)}
+              </p>
+            </div>
+            <Avatar sender={message.sender} />
+          </div>
         </div>
       </div>
     );

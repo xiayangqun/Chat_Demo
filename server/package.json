@@ -6,7 +6,7 @@
   "scripts": {
     "generate-proto": "bash ../scripts/generate-proto.sh",
     "dev": "tsx watch src/index.ts",
-    "build": "bash ../scripts/generate-proto.sh && tsc && cp src/graphql/schema.graphql dist/graphql/ && cp src/generated/chat_realtime_pb.js dist/generated/",
+    "build": "bash ../scripts/generate-proto-server.sh && tsc && cp src/graphql/schema.graphql dist/graphql/ && cp src/generated/chat_realtime_pb.js dist/generated/",
     "start": "node dist/index.js",
     "seed": "tsx src/seed/seedDatabase.ts"
   },

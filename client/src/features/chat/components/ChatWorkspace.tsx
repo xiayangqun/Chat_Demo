@@ -46,6 +46,7 @@ export function ChatWorkspace() {
           <ChatPanel
             conversationId={selectedConversationId}
             conversationName={selectedConversation.name}
+            memberCount={selectedConversation.type === 'GROUP' ? selectedConversation.members.length : undefined}
             members={members}
             initialUnreadCount={initialUnreadCount}
           />
