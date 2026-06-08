@@ -337,10 +337,8 @@ export function useChatSocket() {
         cache.modify({
           id: convRef,
           fields: {
-            lastMessage: () =>
-              gqlConversation.lastMessage as ReturnType<
-                () => Reference | null | undefined
-              >,
+            lastMessage: (existing) =>
+              gqlConversation.lastMessage ?? existing,
             unreadCount: () => gqlConversation.unreadCount,
             mentionCount: () => gqlConversation.mentionCount,
             updatedAt: () => gqlConversation.updatedAt,
