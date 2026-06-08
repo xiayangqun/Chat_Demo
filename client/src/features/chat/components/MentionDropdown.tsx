@@ -67,8 +67,8 @@ export function MentionDropdown({
           }}
           className={`flex cursor-pointer items-center gap-3 px-3 py-2 transition-colors ${
             index === activeIndex
-              ? 'bg-active-row'
-              : 'hover:bg-active-row'
+              ? 'bg-accent/20'
+              : 'hover:bg-white/5'
           }`}
           onMouseDown={(e) => {
             e.preventDefault();

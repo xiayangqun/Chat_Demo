@@ -1,11 +1,9 @@
-import { useRef, useEffect, useCallback, useState } from 'react';
+import { useCallback, useRef, useState } from 'react';
+import { Virtuoso, type VirtuosoHandle } from 'react-virtuoso';
 import { ChevronDown } from 'lucide-react';
 import { MessageItem, type Message } from './MessageItem';
 
 export type { Message } from './MessageItem';
-
-const NEAR_BOTTOM_THRESHOLD = 150;
-const LOAD_MORE_THRESHOLD = 100;
 
 interface MessageListProps {
   messages: Message[];
@@ -24,99 +22,57 @@ export function MessageList({
   loadingMore,
   onLoadMore,
 }: MessageListProps) {
-  const containerRef = useRef<HTMLDivElement>(null);
-  const bottomRef = useRef<HTMLDivElement>(null);
-  const isInitialLoadRef = useRef(true);
-  const prevLengthRef = useRef(0);
+  const virtuosoRef = useRef<VirtuosoHandle>(null);
+  const atBottomRef = useRef(true);
+  const initialUnreadHandledRef = useRef(false);
   const firstMsgIdRef = useRef<string | null>(null);
   const [showScrollButton, setShowScrollButton] = useState(false);
 
-  // Track whether user is near the bottom
-  const isNearBottom = useCallback(() => {
-    const el = containerRef.current;
-    if (!el) return true;
-    return el.scrollHeight - el.scrollTop - el.clientHeight < NEAR_BOTTOM_THRESHOLD;
+  // Reset on conversation switch
+  if (messages.length > 0 && firstMsgIdRef.current !== messages[0].id) {
+    firstMsgIdRef.current = messages[0].id;
+    initialUnreadHandledRef.current = false;
+  }
+
+  // Compute initial scroll index: last message (bottom) or first unread
+  const getInitialIndex = () => {
+    if (messages.length === 0) return 0;
+    if (!initialUnreadHandledRef.current && initialUnreadCount > 0 && initialUnreadCount <= messages.length) {
+      initialUnreadHandledRef.current = true;
+      return { index: messages.length - initialUnreadCount, align: 'start' as const };
+    }
+    initialUnreadHandledRef.current = true;
+    return { index: messages.length - 1, align: 'end' as const };
+  };
+
+  // Auto-scroll: follow new messages only when at bottom or own message
+  const followOutput = useCallback(
+    (isAtBottom: boolean) => {
+      const lastMsg = messages[messages.length - 1];
+      const isOwnMessage = lastMsg?.sender.id === currentUserId;
+      if (isAtBottom || isOwnMessage) {
+        return 'smooth';
+      }
+      setShowScrollButton(true);
+      return false;
+    },
+    [messages, currentUserId],
+  );
+
+  const atBottomStateChange = useCallback((atBottom: boolean) => {
+    atBottomRef.current = atBottom;
+    setShowScrollButton(!atBottom);
   }, []);
 
-  // Scroll to bottom helper
-  const scrollToBottom = useCallback((behavior: ScrollBehavior = 'smooth') => {
-    bottomRef.current?.scrollIntoView({ behavior });
-  }, []);
-
-  // Handle scroll events: detect near-bottom state + trigger load more
-  const handleScroll = useCallback(() => {
-    const el = containerRef.current;
-    if (!el) return;
-
-    setShowScrollButton(!isNearBottom());
-
-    // Load older messages when scrolled near top
-    if (el.scrollTop < LOAD_MORE_THRESHOLD && hasMore && !loadingMore) {
-      const prevScrollHeight = el.scrollHeight;
+  const startReached = useCallback(() => {
+    if (hasMore && !loadingMore) {
       onLoadMore();
-
-      // Preserve scroll position after new messages are prepended.
-      // Use a MutationObserver to detect when the DOM updates.
-      const observer = new MutationObserver(() => {
-        const newScrollHeight = el.scrollHeight;
-        if (newScrollHeight !== prevScrollHeight) {
-          el.scrollTop += newScrollHeight - prevScrollHeight;
-          observer.disconnect();
-        }
-      });
-      observer.observe(el, { childList: true, subtree: true });
-
-      // Safety disconnect after 2s in case DOM doesn't change
-      setTimeout(() => observer.disconnect(), 2000);
     }
-  }, [hasMore, loadingMore, onLoadMore, isNearBottom]);
+  }, [hasMore, loadingMore, onLoadMore]);
 
-  // Initial scroll behavior
-  useEffect(() => {
-    if (messages.length === 0) return;
-
-    // Detect conversation switch: first message ID changed
-    const currentFirstId = messages[0].id;
-    if (firstMsgIdRef.current !== currentFirstId) {
-      firstMsgIdRef.current = currentFirstId;
-      isInitialLoadRef.current = true;
-      setShowScrollButton(false);
-    }
-
-    if (isInitialLoadRef.current) {
-      isInitialLoadRef.current = false;
-      prevLengthRef.current = messages.length;
-
-      if (initialUnreadCount > 0 && initialUnreadCount <= messages.length) {
-        // Scroll to first unread message (instant, no animation)
-        const targetIndex = messages.length - initialUnreadCount;
-        const targetEl = containerRef.current?.querySelector(
-          `[data-index="${targetIndex}"]`,
-        );
-        if (targetEl) {
-          targetEl.scrollIntoView({ behavior: 'auto', block: 'start' });
-          setShowScrollButton(!isNearBottom());
-          return;
-        }
-      }
-
-      // No unread or unread > loaded count: scroll to bottom
-      scrollToBottom('auto');
-      return;
-    }
-
-    // Subsequent updates: new messages were appended
-    const lengthIncreased = messages.length > prevLengthRef.current;
-    prevLengthRef.current = messages.length;
-
-    if (lengthIncreased) {
-      const lastMessage = messages[messages.length - 1];
-      const isOwnMessage = lastMessage?.sender.id === currentUserId;
-      if (isOwnMessage || isNearBottom()) {
-        scrollToBottom('smooth');
-      }
-    }
-  }, [messages, currentUserId, initialUnreadCount, isNearBottom, scrollToBottom]);
+  const handleScrollToBottom = useCallback(() => {
+    virtuosoRef.current?.scrollToIndex({ index: messages.length - 1, behavior: 'smooth' });
+  }, [messages.length]);
 
   if (messages.length === 0) {
     return (
@@ -126,36 +82,36 @@ export function MessageList({
     );
   }
 
+  const initialItem = getInitialIndex();
+
   return (
     <div className="relative flex flex-1 flex-col overflow-hidden">
-      <div
-        ref={containerRef}
-        onScroll={handleScroll}
-        className="flex flex-1 flex-col overflow-y-auto bg-chat-bg"
-      >
-        {loadingMore && (
-          <div className="flex items-center justify-center py-3">
-            <div className="h-5 w-5 animate-spin rounded-full border-2 border-text-muted border-t-accent" />
-          </div>
+      <Virtuoso
+        key={firstMsgIdRef.current ?? 'empty'}
+        ref={virtuosoRef}
+        data={messages}
+        initialTopMostItemIndex={initialItem}
+        followOutput={followOutput}
+        atBottomStateChange={atBottomStateChange}
+        startReached={startReached}
+        overscan={200}
+        itemContent={(_index, msg) => (
+          <MessageItem message={msg} currentUserId={currentUserId} />
         )}
-        <div className="flex flex-1" />
-        <div className="flex flex-col pb-2">
-          {messages.map((msg, i) => (
-            <div key={msg.id} data-index={i}>
-              <MessageItem
-                message={msg}
-                currentUserId={currentUserId}
-              />
-            </div>
-          ))}
-        </div>
-        <div ref={bottomRef} />
-      </div>
+        components={{
+          Header: () =>
+            loadingMore ? (
+              <div className="flex items-center justify-center py-3">
+                <div className="h-5 w-5 animate-spin rounded-full border-2 border-text-muted border-t-accent" />
+              </div>
+            ) : null,
+        }}
+      />
 
       {showScrollButton && (
         <button
           type="button"
-          onClick={() => scrollToBottom('smooth')}
+          onClick={handleScrollToBottom}
           className="absolute bottom-4 right-4 flex h-9 w-9 items-center justify-center rounded-full bg-accent shadow-lg transition-opacity hover:opacity-90"
         >
           <ChevronDown size={18} className="text-white" />
