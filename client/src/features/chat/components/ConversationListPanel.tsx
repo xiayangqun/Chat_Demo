@@ -80,7 +80,7 @@ export function ConversationListPanel({
   const handleCreated = useCallback(() => {}, []);
 
   return (
-    <div className="flex h-full w-[340px] shrink-0 flex-col bg-panel border-r border-border">
+    <div className="flex h-full w-[340px] shrink-0 flex-col bg-panel border-border">
       {/* Top action area */}
       <div className="flex h-16 shrink-0 items-center gap-3 border-b border-border px-4">
         {/* Search input */}

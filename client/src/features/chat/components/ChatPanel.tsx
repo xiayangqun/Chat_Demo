@@ -315,7 +315,7 @@ export function ChatPanel({
   );
 
   return (
-    <div className="flex h-full w-full flex-col bg-chat-bg">
+    <div className="flex h-full w-full flex-col bg-chat-bg border-l border-border">
       {/* Header */}
       <ChatHeader
         conversationName={conversationName}

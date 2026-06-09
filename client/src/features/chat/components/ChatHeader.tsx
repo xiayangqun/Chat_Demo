@@ -7,7 +7,7 @@ interface ChatHeaderProps {
 
 export function ChatHeader({ conversationName, memberCount }: ChatHeaderProps) {
   return (
-    <div className="flex h-[72px] shrink-0 items-center justify-between border-b border-border bg-panel px-5">
+    <div className="flex h-16 shrink-0 items-center justify-between border-b border-border bg-chat-bg px-5">
       {/* Left: conversation title */}
       <h2 className="truncate font-body text-base font-semibold text-text-primary">
         {conversationName}

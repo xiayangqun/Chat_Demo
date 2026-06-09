@@ -51,7 +51,7 @@ export function ChatWorkspace() {
             initialUnreadCount={initialUnreadCount}
           />
         ) : (
-          <div className="flex flex-1 items-center justify-center bg-chat-bg">
+          <div className="flex flex-1 items-center justify-center bg-chat-bg border-l border-border">
             <div className="flex flex-col items-center gap-2">
               <div className="h-12 w-12 rounded-full bg-white/5" />
               <p className="font-body text-sm text-text-muted">

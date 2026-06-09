@@ -8,6 +8,8 @@ import { UserModel } from "../users/user.model.js";
 import { toUserDTO, type UserDTO } from "../users/user.mapper.js";
 import { hashPassword, comparePassword } from "./password.js";
 import { signToken, verifyToken as jwtVerify } from "./jwt.js";
+import { CacheService } from "../../cache/cache.service.js";
+import { cacheKeys } from "../../cache/cacheKeys.js";
 
 export interface AuthPayloadDTO {
   token: string;
@@ -71,6 +73,12 @@ export async function register(input: {
   });
 
   const token = signToken(user._id.toString());
+
+  // Invalidate users list cache so new user appears in Members page
+  void CacheService.delMany([
+    cacheKeys.usersListPattern(),
+  ]).catch(() => {});
+
   return { token, user: toUserDTO(user) };
 }
 

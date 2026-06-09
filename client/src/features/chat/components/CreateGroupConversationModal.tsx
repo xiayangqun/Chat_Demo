@@ -2,10 +2,9 @@ import { useState, useCallback, useEffect, useRef, useMemo } from 'react';
 import { useQuery, useMutation } from '@apollo/client';
 import { useNavigate } from 'react-router-dom';
 import { X, Search, XCircle } from 'lucide-react';
-import { GET_USERS, GET_CONVERSATIONS } from '../graphql/chat.queries';
+import { GET_USERS } from '../graphql/chat.queries';
 import { CREATE_GROUP_CONVERSATION_MUTATION } from '../graphql/chat.mutations';
 import { useAuthContext } from '../../auth/components/AuthGate';
-import type { Conversation } from './ConversationListPanel';
 
 interface UsersQueryData {
   users: Array<{
@@ -152,32 +151,6 @@ export function CreateGroupConversationModal({
             memberUserIds: selectedUserIds,
           },
         },
-        update: (cache, { data: mutationData }) => {
-          if (!mutationData?.createGroupConversation) return;
-
-          const newConversation = mutationData.createGroupConversation;
-
-          // Prepend the new conversation to the GET_CONVERSATIONS cache
-          const existingData = cache.readQuery<{ conversations: Conversation[] }>({
-            query: GET_CONVERSATIONS,
-          });
-
-          if (existingData) {
-            cache.writeQuery({
-              query: GET_CONVERSATIONS,
-              data: {
-                conversations: [
-                  {
-                    ...newConversation,
-                    lastMessage: newConversation.lastMessage ?? null,
-                    members: [],
-                  } as unknown as Conversation,
-                  ...existingData.conversations,
-                ],
-              },
-            });
-          }
-        },
       });
 
       if (data?.createGroupConversation) {
@@ -225,12 +198,13 @@ export function CreateGroupConversationModal({
   }, [isOpen, groupName]);
 
   useEffect(() => {
-    if (!isOpen) {
+    if (isOpen) {
+      setSelectedUserIds(preselectedUserIds);
+    } else {
       setGroupName('');
       setSearchQuery('');
-      setSelectedUserIds(preselectedUserIds);
     }
-  }, [isOpen]);
+  }, [isOpen, preselectedUserIds]);
 
   if (!isOpen) return null;
 

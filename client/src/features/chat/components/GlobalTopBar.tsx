@@ -11,6 +11,19 @@ export function GlobalTopBar({ currentUser, onLogout }: GlobalTopBarProps) {
   const [menuOpen, setMenuOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
 
+  const [now, setNow] = useState(() => new Date());
+
+  useEffect(() => {
+    const timer = setInterval(() => setNow(new Date()), 1000);
+    return () => clearInterval(timer);
+  }, []);
+
+  const timeStr = now.toLocaleTimeString('en-US', {
+    hour: 'numeric',
+    minute: '2-digit',
+    hour12: true,
+  });
+
   useEffect(() => {
     function handleClickOutside(e: MouseEvent) {
       if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
@@ -36,7 +49,7 @@ export function GlobalTopBar({ currentUser, onLogout }: GlobalTopBarProps) {
       {/* Timezone */}
       <div className="flex items-center gap-1.5 text-text-dim text-sm font-body">
         <Globe size={15} />
-        <span>UTC -05:00 Chicago</span>
+        <span>{timeStr}</span>
       </div>
 
       {/* Icon buttons */}

@@ -14,6 +14,8 @@ interface NavItem {
   disabled?: boolean;
   badge?: number;
   hasMention?: boolean;
+  iconColor: string;
+  iconBg: string;
 }
 
 interface SidebarNavProps {
@@ -32,7 +34,7 @@ function SidebarNavItem({ item }: { item: NavItem }) {
         className={({ isActive }) =>
           `group flex items-center gap-3 rounded-lg px-3 py-2.5 text-[15px] font-medium transition-colors ${
             isActive
-              ? 'bg-white/10 text-accent'
+              ? 'bg-white/10 text-text-primary'
               : 'text-text-secondary hover:bg-white/5 hover:text-text-primary'
           }`
         }
@@ -40,13 +42,15 @@ function SidebarNavItem({ item }: { item: NavItem }) {
         {({ isActive }) => (
           <>
             <span
-              className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-full ${
-                isActive ? 'bg-white' : 'bg-white/5'
+              className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full ${
+                isActive ? 'bg-white/15' : ''
               }`}
+              style={!isActive ? { backgroundColor: item.iconBg } : undefined}
             >
               <Icon
                 size={20}
-                className={isActive ? 'text-accent' : 'text-text-muted'}
+                style={!isActive ? { color: item.iconColor } : undefined}
+                className={isActive ? 'text-text-primary' : ''}
               />
             </span>
             <span className="flex-1">{item.label}</span>
@@ -70,8 +74,11 @@ function SidebarNavItem({ item }: { item: NavItem }) {
       disabled
       className="flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-[15px] font-medium text-text-muted opacity-50"
     >
-      <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-white/5">
-        <Icon size={20} className="text-text-muted" />
+      <span
+        className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full"
+        style={{ backgroundColor: item.iconBg }}
+      >
+        <Icon size={20} style={{ color: item.iconColor }} />
       </span>
       <span className="flex-1 text-left">{item.label}</span>
     </button>
@@ -80,14 +87,14 @@ function SidebarNavItem({ item }: { item: NavItem }) {
 
 export function SidebarNav({ totalUnreadCount = 0, hasMention = false }: SidebarNavProps) {
   const engageItems: NavItem[] = [
-    { label: 'Forum', icon: MessageSquare, disabled: true },
-    { label: 'Chat', icon: MessageCircle, to: '/', badge: totalUnreadCount > 0 ? totalUnreadCount : undefined, hasMention },
-    { label: 'Matches', icon: Heart, disabled: true },
+    { label: 'Forum', icon: MessageSquare, disabled: true, iconColor: '#F5A623', iconBg: 'rgba(245,166,35,0.15)' },
+    { label: 'Chat', icon: MessageCircle, to: '/', badge: totalUnreadCount > 0 ? totalUnreadCount : undefined, hasMention, iconColor: '#04B17D', iconBg: 'rgba(4,177,125,0.15)' },
+    { label: 'Matches', icon: Heart, disabled: true, iconColor: '#F5A623', iconBg: 'rgba(245,166,35,0.15)' },
   ];
 
   const peopleItems: NavItem[] = [
-    { label: 'Members', icon: Users, to: '/members' },
-    { label: 'Contributors', icon: Award, disabled: true },
+    { label: 'Members', icon: Users, to: '/members', iconColor: '#7B61FF', iconBg: 'rgba(123,97,255,0.15)' },
+    { label: 'Contributors', icon: Award, disabled: true, iconColor: '#04B17D', iconBg: 'rgba(4,177,125,0.15)' },
   ];
 
   return (
